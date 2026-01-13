@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frame Viewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(165deg, #0a0a0b 0%, #141416 50%, #1a1a1e 100%);
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #e8e8eb;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #fff 0%, #a5a5b5 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: #e8e8eb;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #a5a5b5;
+      padding: 8px 12px;
+    }
+
+    .btn-ghost:hover {
+      color: #fff;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Input Panel */
+    .input-panel {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+
+    .input-panel.collapsed .input-content {
+      display: none;
+    }
+
+    .input-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .input-header:hover {
+      background: rgba(255,255,255,0.02);
+    }
+
+    .input-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .input-header h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: #a5a5b5;
+    }
+
+    .collapse-icon {
+      transition: transform 0.2s;
+      color: #6b6b7b;
+    }
+
+    .input-panel.collapsed .collapse-icon {
+      transform: rotate(-90deg);
+    }
+
+    .input-content {
+      padding: 0 20px 20px;
+    }
+
+    .form-inner {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    textarea {
+      flex: 1;
+      min-width: 300px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: #e8e8eb;
+      font-size: 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      line-height: 1.5;
+      outline: none;
+      transition: all 0.2s ease;
+      resize: vertical;
+    }
+
+    textarea::placeholder {
+      color: #5b5b6b;
+    }
+
+    textarea:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    .error-message {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      color: #ef4444;
+      font-size: 14px;
+      display: none;
+    }
+
+    .error-message.visible {
+      display: block;
+    }
+
+    /* View modes */
+    .view-container {
+      display: grid;
+      gap: 20px;
+    }
+
+    .view-container.single {
+      grid-template-columns: 1fr;
+    }
+
+    .view-container.multi-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .view-container.multi-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .view-container.multi-4 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 1000px) {
+      .view-container.multi-2,
+      .view-container.multi-3,
+      .view-container.multi-4 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Frame Card */
+    .frame-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .frame-toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .frame-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .live-badge {
+      color: #10b981;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      background: rgba(16, 185, 129, 0.15);
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .frame-url {
+      color: #8b8b9b;
+      font-size: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .frame-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .frame-preview {
+      aspect-ratio: 16/9;
+      background: #000;
+      position: relative;
+    }
+
+    .frame-preview iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .frame-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #4b4b5b;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .frame-placeholder-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
+    /* Add Screen Card */
+    .add-screen-card {
+      background: rgba(255,255,255,0.02);
+      border: 2px dashed rgba(255,255,255,0.1);
+      border-radius: 12px;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .add-screen-card:hover {
+      border-color: rgba(99, 102, 241, 0.5);
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    .add-screen-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #6b6b7b;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .add-screen-card:hover .add-screen-icon {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5a5f7;
+    }
+
+    .add-screen-text {
+      color: #6b6b7b;
+      font-size: 14px;
+    }
+
+    /* Theater Mode */
+    .theater-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.98);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .theater-overlay.visible {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .theater-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0,0,0,0.5);
+      flex-shrink: 0;
+    }
+
+    .theater-url {
+      color: #8b8b9b;
+      font-size: 13px;
+      font-family: 'IBM Plex Mono', monospace;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 60%;
+    }
+
+    .btn-exit-theater {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-exit-theater:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .theater-content {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .theater-frame {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 100px rgba(99, 102, 241, 0.2);
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .theater-frame iframe {
+      display: block;
+      border: none;
+    }
+
+    /* History Panel */
+    .history-toggle {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 100;
+    }
+
+    .history-panel {
+      position: fixed;
+      bottom: 80px;
+      right: 24px;
+      width: 320px;
+      max-height: 400px;
+      background: rgba(20, 20, 22, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      overflow: hidden;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    .history-panel.visible {
+      display: block;
+      animation: slideUp 0.2s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { 
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .history-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-header h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #a5a5b5;
+    }
+
+    .history-list {
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .history-item:last-child {
+      border-bottom: none;
+    }
+
+    .history-item:hover {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .history-item.active {
+      background: rgba(99, 102, 241, 0.1);
+    }
+
+    .history-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-item-url {
+      font-size: 12px;
+      color: #e8e8eb;
+      margin-bottom: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-item-meta {
+      font-size: 10px;
+      color: #5b5b6b;
+    }
+
+    .btn-remove {
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      color: #6b6b7b;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .btn-remove:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    .history-empty {
+      padding: 32px 16px;
+      text-align: center;
+      color: #5b5b6b;
+      font-size: 13px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255,255,255,0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">⧉</div>
+        <h1>Frame Viewer</h1>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="addScreen()" id="addScreenBtn" style="display: none;">
+          <span>+</span> Add Screen
+        </button>
+        <button class="btn btn-secondary" onclick="toggleMultiview()" id="multiviewBtn">
+          <span>⧉</span> Multiview
+        </button>
+      </div>
+    </div>
+
+    <!-- Input Panel -->
+    <div class="input-panel" id="inputPanel">
+      <div class="input-header" onclick="toggleInputPanel()">
+        <div class="input-header-left">
+          <h3>Add Content</h3>
+        </div>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="input-content">
+        <div class="form-inner">
+          <textarea id="input" rows="3" placeholder='Paste iframe code or URL (e.g., <iframe src="..."> or https://...)'></textarea>
+          <button class="btn btn-primary" onclick="loadFrame()">Load Frame</button>
+        </div>
+        <div id="error" class="error-message"></div>
+      </div>
+    </div>
+
+    <!-- View Container -->
+    <div class="view-container single" id="viewContainer">
+      <div class="frame-card" id="frame-0">
+        <div class="frame-toolbar">
+          <div class="frame-info">
+            <span class="live-badge" style="display: none;">LIVE</span>
+            <span class="frame-url">No content loaded</span>
+          </div>
+          <div class="frame-actions">
+            <button class="btn btn-ghost" onclick="openTheater(0)" disabled>
+              <span>⛶</span> Theater
+            </button>
+          </div>
+        </div>
+        <div class="frame-preview">
+          <div class="frame-placeholder">
+            <div class="frame-placeholder-icon">⧉</div>
+            <p>Enter an iframe code or URL above</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theater Mode Overlay -->
+  <div id="theaterOverlay" class="theater-overlay">
+    <div class="theater-header">
+      <span class="theater-url" id="theaterUrl"></span>
+      <button class="btn-exit-theater" onclick="closeTheater()">
+        <span>✕</span> Exit Theater
+      </button>
+    </div>
+    <div class="theater-content" id="theaterContent">
+      <div id="theaterFrame" class="theater-frame"></div>
+    </div>
+  </div>
+
+  <!-- History Toggle -->
+  <div class="history-toggle">
+    <button class="btn btn-secondary" onclick="toggleHistory()">
+      <span>↻</span> History
+    </button>
+  </div>
+
+  <!-- History Panel -->
+  <div id="historyPanel" class="history-panel">
+    <div class="history-header">
+      <h3 id="historyTitle">History</h3>
+      <button class="btn btn-danger" onclick="clearHistory()" style="padding: 4px 10px; font-size: 11px;">Clear All</button>
+    </div>
+    <div id="historyList" class="history-list">
+      <div class="history-empty">No history yet</div>
+    </div>
+  </div>
+
+  <script>
+    let frames = [{ id: 0, data: null }];
+    let activeFrameId = 0;
+    let history = [];
+    let multiviewMode = false;
+    let historyVisible = false;
+
+    // Parse iframe code or URL
+    function parseInput(inputStr) {
+      const trimmed = inputStr.trim();
+      
+      if (trimmed.toLowerCase().startsWith('<iframe')) {
+        const srcMatch = trimmed.match(/src=["']([^"']+)["']/i);
+        const widthMatch = trimmed.match(/width=["']?(\d+)["']?/i);
+        const heightMatch = trimmed.match(/height=["']?(\d+)["']?/i);
+        
+        if (srcMatch) {
+          const width = (widthMatch && !trimmed.match(/width=["']?\d+%/i)) ? parseInt(widthMatch[1]) : 960;
+          const height = (heightMatch && !trimmed.match(/height=["']?\d+%/i)) ? parseInt(heightMatch[1]) : 540;
+          
+          return { url: srcMatch[1], width, height, original: trimmed };
+        }
+      }
+      
+      if (trimmed.match(/^https?:\/\//i) || trimmed.match(/^\/\//)) {
+        return {
+          url: trimmed.startsWith('//') ? 'https:' + trimmed : trimmed,
+          width: 960, height: 540, original: trimmed
+        };
+      }
+      
+      if (trimmed.match(/^[\w-]+\.[\w.-]+/)) {
+        return { url: 'https://' + trimmed, width: 960, height: 540, original: trimmed };
+      }
+      
+      return null;
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error');
+      errorEl.textContent = message;
+      errorEl.classList.add('visible');
+    }
+
+    function hideError() {
+      document.getElementById('error').classList.remove('visible');
+    }
+
+    function loadFrame() {
+      hideError();
+      const input = document.getElementById('input').value;
+      
+      if (!input.trim()) {
+        showError('Please enter an iframe code or URL');
+        return;
+      }
+      
+      const parsed = parseInput(input);
+      
+      if (parsed) {
+        const newEntry = {
+          id: Date.now(),
+          ...parsed,
+          timestamp: new Date().toLocaleString()
+        };
+        
+        // Update active frame
+        const frameIndex = frames.findIndex(f => f.id === activeFrameId);
+        if (frameIndex !== -1) {
+          frames[frameIndex].data = newEntry;
+        }
+        
+        // Add to history if not duplicate
+        if (!history.some(h => h.url === parsed.url)) {
+          history.unshift(newEntry);
+          if (history.length > 20) history.pop();
+        }
+        
+        document.getElementById('input').value = '';
+        
+        // Collapse input panel after loading
+        document.getElementById('inputPanel').classList.add('collapsed');
+        
+        updateUI();
+      } else {
+        showError('Could not parse input. Please enter a valid iframe code or URL.');
+      }
+    }
+
+    function toggleInputPanel() {
+      document.getElementById('inputPanel').classList.toggle('collapsed');
+    }
+
+    function toggleMultiview() {
+      multiviewMode = !multiviewMode;
+      const btn = document.getElementById('multiviewBtn');
+      const addBtn = document.getElementById('addScreenBtn');
+      
+      if (multiviewMode) {
+        btn.innerHTML = '<span>◫</span> Single View';
+        addBtn.style.display = 'flex';
+      } else {
+        btn.innerHTML = '<span>⧉</span> Multiview';
+        addBtn.style.display = 'none';
+        // Reset to single frame
+        frames = [frames[0] || { id: 0, data: null }];
+        activeFrameId = frames[0].id;
+      }
+      
+      updateUI();
+    }
+
+    function addScreen() {
+      if (frames.length >= 4) return;
+      
+      const newId = Date.now();
+      frames.push({ id: newId, data: null });
+      activeFrameId = newId;
+      
+      // Expand input panel for new screen
+      document.getElementById('inputPanel').classList.remove('collapsed');
+      document.getElementById('input').focus();
+      
+      updateUI();
+    }
+
+    function removeScreen(id) {
+      if (frames.length <= 1) return;
+      
+      frames = frames.filter(f => f.id !== id);
+      if (activeFrameId === id) {
+        activeFrameId = frames[0].id;
+      }
+      
+      updateUI();
+    }
+
+    function selectFrame(id) {
+      activeFrameId = id;
+      const frame = frames.find(f => f.id === id);
+      
+      document.getElementById('inputPanel').classList.remove('collapsed');
+      document.getElementById('input').value = frame?.data?.original || '';
+      document.getElementById('input').focus();
+    }
+
+    function updateUI() {
+      const container = document.getElementById('viewContainer');
+      
+      // Set grid class
+      container.className = 'view-container';
+      if (!multiviewMode || frames.length === 1) {
+        container.classList.add('single');
+      } else if (frames.length === 2) {
+        container.classList.add('multi-2');
+      } else if (frames.length === 3) {
+        container.classList.add('multi-3');
+      } else {
+        container.classList.add('multi-4');
+      }
+      
+      // Build frame cards
+      let html = '';
+      frames.forEach((frame, index) => {
+        const data = frame.data;
+        const isActive = frame.id === activeFrameId;
+        
+        html += `
+          <div class="frame-card" style="${isActive && multiviewMode ? 'border-color: rgba(99, 102, 241, 0.5);' : ''}">
+            <div class="frame-toolbar">
+              <div class="frame-info">
+                ${data ? '<span class="live-badge">LIVE</span>' : ''}
+                <span class="frame-url">${data ? truncateUrl(data.url, 40) : 'No content loaded'}</span>
+              </div>
+              <div class="frame-actions">
+                ${multiviewMode ? `<button class="btn btn-ghost" onclick="selectFrame(${frame.id})">✎ Edit</button>` : ''}
+                ${data ? `<button class="btn btn-ghost" onclick="openTheater(${index})"><span>⛶</span> Theater</button>` : ''}
+                ${multiviewMode && frames.length > 1 ? `<button class="btn btn-ghost" onclick="removeScreen(${frame.id})" style="color: #ef4444;">✕</button>` : ''}
+              </div>
+            </div>
+            <div class="frame-preview" style="${data ? `aspect-ratio: ${data.width}/${data.height};` : ''}">
+              ${data 
+                ? `<iframe src="${data.url}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
+                : `<div class="frame-placeholder">
+                    <div class="frame-placeholder-icon">⧉</div>
+                    <p>${multiviewMode ? 'Click Edit to add content' : 'Enter an iframe code or URL above'}</p>
+                  </div>`
+              }
+            </div>
+          </div>
+        `;
+      });
+      
+      // Add "Add Screen" card in multiview mode
+      if (multiviewMode && frames.length < 4) {
+        html += `
+          <div class="add-screen-card" onclick="addScreen()">
+            <div class="add-screen-icon">+</div>
+            <div class="add-screen-text">Add Screen</div>
+          </div>
+        `;
+      }
+      
+      container.innerHTML = html;
+      
+      // Update history
+      updateHistory();
+    }
+
+    function truncateUrl(url, maxLength) {
+      if (url.length <= maxLength) return url;
+      return url.substring(0, maxLength - 3) + '...';
+    }
+
+    function openTheater(frameIndex) {
+      const frame = frames[frameIndex];
+      if (!frame?.data) return;
+      
+      const data = frame.data;
+      const overlay = document.getElementById('theaterOverlay');
+      const theaterUrl = document.getElementById('theaterUrl');
+      
+      overlay.classList.add('visible');
+      document.body.style.overflow = 'hidden';
+      theaterUrl.textContent = data.url;
+      
+      updateTheaterSize(data);
+      window.currentTheaterData = data;
+      window.addEventListener('resize', handleTheaterResize);
+    }
+
+    function handleTheaterResize() {
+      if (window.currentTheaterData) {
+        updateTheaterSize(window.currentTheaterData);
+      }
+    }
+
+    function updateTheaterSize(data) {
+      const theaterContent = document.getElementById('theaterContent');
+      const theaterFrame = document.getElementById('theaterFrame');
+      
+      const maxWidth = theaterContent.clientWidth - 48;
+      const maxHeight = theaterContent.clientHeight - 48;
+      const aspectRatio = data.width / data.height;
+      
+      let width = maxWidth;
+      let height = width / aspectRatio;
+      
+      if (height > maxHeight) {
+        height = maxHeight;
+        width = height * aspectRatio;
+      }
+      
+      theaterFrame.style.width = `${width}px`;
+      theaterFrame.style.height = `${height}px`;
+      theaterFrame.innerHTML = `<iframe src="${data.url}" style="width: 100%; height: 100%;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+    }
+
+    function closeTheater() {
+      document.getElementById('theaterOverlay').classList.remove('visible');
+      document.body.style.overflow = '';
+      window.removeEventListener('resize', handleTheaterResize);
+      window.currentTheaterData = null;
+    }
+
+    function toggleHistory() {
+      historyVisible = !historyVisible;
+      document.getElementById('historyPanel').classList.toggle('visible', historyVisible);
+    }
+
+    function updateHistory() {
+      const historyList = document.getElementById('historyList');
+      const historyTitle = document.getElementById('historyTitle');
+      
+      historyTitle.textContent = `History (${history.length})`;
+      
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">No history yet</div>';
+        return;
+      }
+      
+      historyList.innerHTML = history.map(item => `
+        <div class="history-item" onclick="loadFromHistory('${item.url}')">
+          <div class="history-item-info">
+            <div class="history-item-url">${truncateUrl(item.url, 35)}</div>
+            <div class="history-item-meta">${item.timestamp}</div>
+          </div>
+          <button class="btn-remove" onclick="event.stopPropagation(); removeFromHistory(${item.id})">×</button>
+        </div>
+      `).join('');
+    }
+
+    function loadFromHistory(url) {
+      const item = history.find(h => h.url === url);
+      if (item) {
+        const frameIndex = frames.findIndex(f => f.id === activeFrameId);
+        if (frameIndex !== -1) {
+          frames[frameIndex].data = { ...item, id: Date.now() };
+        }
+        
+        document.getElementById('inputPanel').classList.add('collapsed');
+        
+        updateUI();
+        
+        // Close history panel
+        historyVisible = false;
+        document.getElementById('historyPanel').classList.remove('visible');
+      }
+    }
+
+    function removeFromHistory(id) {
+      history = history.filter(item => item.id !== id);
+      updateHistory();
+    }
+
+    function clearHistory() {
+      history = [];
+      updateHistory();
+    }
+
+    // Keyboard shortcuts
+    document.getElementById('input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        loadFrame();
+      }
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeTheater();
+      }
+    });
+
+    // Initialize
+    updateUI();
+  </script>
+</body>
+</html>

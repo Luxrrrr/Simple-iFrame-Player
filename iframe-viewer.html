@@ -160,6 +160,10 @@
       justify-content: space-between;
       cursor: pointer;
       transition: background 0.2s;
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
     }
 
     .input-header:hover {
@@ -360,6 +364,7 @@
       justify-content: center;
       cursor: pointer;
       transition: all 0.2s ease;
+      padding: 0;
     }
 
     .add-screen-card:hover {
@@ -640,12 +645,12 @@
 
     <!-- Input Panel -->
     <div class="input-panel" id="inputPanel">
-      <div class="input-header" onclick="toggleInputPanel()">
+      <button class="input-header" onclick="toggleInputPanel()" aria-expanded="true" aria-controls="inputPanel">
         <div class="input-header-left">
           <h3>Add Content</h3>
         </div>
         <span class="collapse-icon">▼</span>
-      </div>
+      </button>
       <div class="input-content">
         <div class="form-inner">
           <textarea id="input" rows="3" placeholder='Paste iframe code or URL (e.g., <iframe src="..."> or https://...)'></textarea>
@@ -683,7 +688,7 @@
   <div id="theaterOverlay" class="theater-overlay">
     <div class="theater-header">
       <span class="theater-url" id="theaterUrl"></span>
-      <button class="btn-exit-theater" onclick="closeTheater()">
+      <button class="btn-exit-theater" onclick="closeTheater()" aria-label="Exit theater mode">
         <span>✕</span> Exit Theater
       </button>
     </div>
@@ -694,13 +699,13 @@
 
   <!-- History Toggle -->
   <div class="history-toggle">
-    <button class="btn btn-secondary" onclick="toggleHistory()">
+    <button class="btn btn-secondary" onclick="toggleHistory()" id="historyToggleBtn" aria-label="Toggle URL history" aria-expanded="false" aria-controls="historyPanel">
       <span>↻</span> History
     </button>
   </div>
 
   <!-- History Panel -->
-  <div id="historyPanel" class="history-panel">
+  <div id="historyPanel" class="history-panel" role="dialog" aria-label="URL History" aria-modal="true">
     <div class="history-header">
       <h3 id="historyTitle">History</h3>
       <button class="btn btn-danger" onclick="clearHistory()" style="padding: 4px 10px; font-size: 11px;">Clear All</button>
@@ -713,38 +718,53 @@
   <script>
     let frames = [{ id: 0, data: null }];
     let activeFrameId = 0;
-    let history = [];
+    let urlHistory = [];
     let multiviewMode = false;
     let historyVisible = false;
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    function isSafeUrl(url) {
+      try {
+        const u = new URL(url);
+        return u.protocol === 'https:' || u.protocol === 'http:';
+      } catch { return false; }
+    }
 
     // Parse iframe code or URL
     function parseInput(inputStr) {
       const trimmed = inputStr.trim();
-      
+
       if (trimmed.toLowerCase().startsWith('<iframe')) {
         const srcMatch = trimmed.match(/src=["']([^"']+)["']/i);
         const widthMatch = trimmed.match(/width=["']?(\d+)["']?/i);
         const heightMatch = trimmed.match(/height=["']?(\d+)["']?/i);
-        
+
         if (srcMatch) {
-          const width = (widthMatch && !trimmed.match(/width=["']?\d+%/i)) ? parseInt(widthMatch[1]) : 960;
-          const height = (heightMatch && !trimmed.match(/height=["']?\d+%/i)) ? parseInt(heightMatch[1]) : 540;
-          
-          return { url: srcMatch[1], width, height, original: trimmed };
+          const width = Math.max((widthMatch && !trimmed.match(/width=["']?\d+%/i)) ? parseInt(widthMatch[1]) : 960, 1);
+          const height = Math.max((heightMatch && !trimmed.match(/height=["']?\d+%/i)) ? parseInt(heightMatch[1]) : 540, 1);
+          const url = srcMatch[1];
+          if (!isSafeUrl(url)) return null;
+          return { url, width, height, original: trimmed };
         }
       }
-      
+
       if (trimmed.match(/^https?:\/\//i) || trimmed.match(/^\/\//)) {
-        return {
-          url: trimmed.startsWith('//') ? 'https:' + trimmed : trimmed,
-          width: 960, height: 540, original: trimmed
-        };
+        const url = trimmed.startsWith('//') ? 'https:' + trimmed : trimmed;
+        if (!isSafeUrl(url)) return null;
+        return { url, width: 960, height: 540, original: trimmed };
       }
-      
+
       if (trimmed.match(/^[\w-]+\.[\w.-]+/)) {
-        return { url: 'https://' + trimmed, width: 960, height: 540, original: trimmed };
+        const url = 'https://' + trimmed;
+        if (!isSafeUrl(url)) return null;
+        return { url, width: 960, height: 540, original: trimmed };
       }
-      
+
       return null;
     }
 
@@ -783,9 +803,9 @@
         }
         
         // Add to history if not duplicate
-        if (!history.some(h => h.url === parsed.url)) {
-          history.unshift(newEntry);
-          if (history.length > 20) history.pop();
+        if (!urlHistory.some(h => h.url === parsed.url)) {
+          urlHistory.unshift(newEntry);
+          if (urlHistory.length > 20) urlHistory.pop();
         }
         
         document.getElementById('input').value = '';
@@ -873,26 +893,26 @@
       
       // Build frame cards
       let html = '';
-      frames.forEach((frame, index) => {
+      frames.forEach((frame) => {
         const data = frame.data;
         const isActive = frame.id === activeFrameId;
-        
+
         html += `
           <div class="frame-card" style="${isActive && multiviewMode ? 'border-color: rgba(99, 102, 241, 0.5);' : ''}">
             <div class="frame-toolbar">
               <div class="frame-info">
                 ${data ? '<span class="live-badge">LIVE</span>' : ''}
-                <span class="frame-url">${data ? truncateUrl(data.url, 40) : 'No content loaded'}</span>
+                <span class="frame-url">${data ? escapeHtml(truncateUrl(data.url, 40)) : 'No content loaded'}</span>
               </div>
               <div class="frame-actions">
                 ${multiviewMode ? `<button class="btn btn-ghost" onclick="selectFrame(${frame.id})">✎ Edit</button>` : ''}
-                ${data ? `<button class="btn btn-ghost" onclick="openTheater(${index})"><span>⛶</span> Theater</button>` : ''}
+                ${data ? `<button class="btn btn-ghost" onclick="openTheater(${frame.id})" aria-label="Open theater mode"><span>⛶</span> Theater</button>` : ''}
                 ${multiviewMode && frames.length > 1 ? `<button class="btn btn-ghost" onclick="removeScreen(${frame.id})" style="color: #ef4444;">✕</button>` : ''}
               </div>
             </div>
             <div class="frame-preview" style="${data ? `aspect-ratio: ${data.width}/${data.height};` : ''}">
-              ${data 
-                ? `<iframe src="${data.url}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
+              ${data
+                ? `<iframe src="${escapeHtml(data.url)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"></iframe>`
                 : `<div class="frame-placeholder">
                     <div class="frame-placeholder-icon">⧉</div>
                     <p>${multiviewMode ? 'Click Edit to add content' : 'Enter an iframe code or URL above'}</p>
@@ -902,17 +922,17 @@
           </div>
         `;
       });
-      
+
       // Add "Add Screen" card in multiview mode
       if (multiviewMode && frames.length < 4) {
         html += `
-          <div class="add-screen-card" onclick="addScreen()">
+          <button class="add-screen-card" onclick="addScreen()">
             <div class="add-screen-icon">+</div>
             <div class="add-screen-text">Add Screen</div>
-          </div>
+          </button>
         `;
       }
-      
+
       container.innerHTML = html;
       
       // Update history
@@ -924,21 +944,26 @@
       return url.substring(0, maxLength - 3) + '...';
     }
 
-    function openTheater(frameIndex) {
-      const frame = frames[frameIndex];
+    function openTheater(frameId) {
+      const frame = frames.find(f => f.id === frameId);
       if (!frame?.data) return;
-      
+
       const data = frame.data;
       const overlay = document.getElementById('theaterOverlay');
       const theaterUrl = document.getElementById('theaterUrl');
-      
+
+      window._theaterTrigger = document.activeElement;
+
       overlay.classList.add('visible');
       document.body.style.overflow = 'hidden';
       theaterUrl.textContent = data.url;
-      
+
       updateTheaterSize(data);
       window.currentTheaterData = data;
+      window.removeEventListener('resize', handleTheaterResize);
       window.addEventListener('resize', handleTheaterResize);
+
+      setTimeout(() => document.querySelector('.btn-exit-theater').focus(), 50);
     }
 
     function handleTheaterResize() {
@@ -965,7 +990,7 @@
       
       theaterFrame.style.width = `${width}px`;
       theaterFrame.style.height = `${height}px`;
-      theaterFrame.innerHTML = `<iframe src="${data.url}" style="width: 100%; height: 100%;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+      theaterFrame.innerHTML = `<iframe src="${escapeHtml(data.url)}" style="width: 100%; height: 100%;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"></iframe>`;
     }
 
     function closeTheater() {
@@ -973,60 +998,85 @@
       document.body.style.overflow = '';
       window.removeEventListener('resize', handleTheaterResize);
       window.currentTheaterData = null;
+      window._theaterTrigger?.focus();
+      window._theaterTrigger = null;
     }
 
     function toggleHistory() {
       historyVisible = !historyVisible;
       document.getElementById('historyPanel').classList.toggle('visible', historyVisible);
+      document.getElementById('historyToggleBtn').setAttribute('aria-expanded', historyVisible ? 'true' : 'false');
     }
 
     function updateHistory() {
       const historyList = document.getElementById('historyList');
       const historyTitle = document.getElementById('historyTitle');
-      
-      historyTitle.textContent = `History (${history.length})`;
-      
-      if (history.length === 0) {
+
+      historyTitle.textContent = `History (${urlHistory.length})`;
+
+      if (urlHistory.length === 0) {
         historyList.innerHTML = '<div class="history-empty">No history yet</div>';
         return;
       }
-      
-      historyList.innerHTML = history.map(item => `
-        <div class="history-item" onclick="loadFromHistory('${item.url}')">
-          <div class="history-item-info">
-            <div class="history-item-url">${truncateUrl(item.url, 35)}</div>
-            <div class="history-item-meta">${item.timestamp}</div>
-          </div>
-          <button class="btn-remove" onclick="event.stopPropagation(); removeFromHistory(${item.id})">×</button>
-        </div>
-      `).join('');
+
+      historyList.innerHTML = '';
+      urlHistory.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.addEventListener('click', () => loadFromHistory(item.url));
+
+        const info = document.createElement('div');
+        info.className = 'history-item-info';
+
+        const urlDiv = document.createElement('div');
+        urlDiv.className = 'history-item-url';
+        urlDiv.textContent = truncateUrl(item.url, 35);
+
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'history-item-meta';
+        metaDiv.textContent = item.timestamp;
+
+        info.appendChild(urlDiv);
+        info.appendChild(metaDiv);
+
+        const btn = document.createElement('button');
+        btn.className = 'btn-remove';
+        btn.setAttribute('aria-label', 'Remove from history');
+        btn.textContent = '×';
+        btn.addEventListener('click', (e) => { e.stopPropagation(); removeFromHistory(item.id); });
+
+        div.appendChild(info);
+        div.appendChild(btn);
+        historyList.appendChild(div);
+      });
     }
 
     function loadFromHistory(url) {
-      const item = history.find(h => h.url === url);
+      const item = urlHistory.find(h => h.url === url);
       if (item) {
         const frameIndex = frames.findIndex(f => f.id === activeFrameId);
         if (frameIndex !== -1) {
           frames[frameIndex].data = { ...item, id: Date.now() };
         }
-        
+
         document.getElementById('inputPanel').classList.add('collapsed');
-        
+
         updateUI();
-        
+
         // Close history panel
         historyVisible = false;
         document.getElementById('historyPanel').classList.remove('visible');
+        document.getElementById('historyToggleBtn').setAttribute('aria-expanded', 'false');
       }
     }
 
     function removeFromHistory(id) {
-      history = history.filter(item => item.id !== id);
+      urlHistory = urlHistory.filter(item => item.id !== id);
       updateHistory();
     }
 
     function clearHistory() {
-      history = [];
+      urlHistory = [];
       updateHistory();
     }
 
